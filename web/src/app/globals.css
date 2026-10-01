@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+/* ============================================================
+   墨晓 · Ink Dawn  —  Global Theme
+   纯深黑底 / 米白文字 / 黎明金橙渐变 (amber-400 → orange-500)
+   ============================================================ */
+
+:root {
+  /* 基础色板：接近纯黑而非 Tailwind 默认 zinc */
+  --ink-bg: #08080b;
+  --ink-bg-soft: #0e0e13;
+  --ink-panel: #111117;
+  --ink-line: #23232c;
+
+  /* 文字：米白 */
+  --ink-fg: #f3efe6;
+  --ink-fg-dim: #a8a29a;
+  --ink-fg-faint: #6b6660;
+
+  /* 主强调：黎明金橙渐变 amber-400 → orange-500 */
+  --ink-amber: #fbbf24;   /* amber-400 */
+  --ink-orange: #f97316;  /* orange-500 */
+  --ink-dawn-from: #fbbf24;
+  --ink-dawn-via: #fb923c; /* orange-400 */
+  --ink-dawn-to: #f97316;
+
+  /* 辅助点缀：青蓝 */
+  --ink-cyan: #22d3ee;    /* cyan-400 */
+  --ink-blue: #60a5fa;    /* blue-400 */
+}
+
+@theme inline {
+  --color-ink-bg: var(--ink-bg);
+  --color-ink-bg-soft: var(--ink-bg-soft);
+  --color-ink-ink-panel: var(--ink-panel);
+  --color-ink-line: var(--ink-line);
+  --color-ink-fg: var(--ink-fg);
+  --color-ink-fg-dim: var(--ink-fg-dim);
+  --color-ink-fg-faint: var(--ink-fg-faint);
+  --color-ink-amber: var(--ink-amber);
+  --color-ink-orange: var(--ink-orange);
+  --color-ink-cyan: var(--ink-cyan);
+  --color-ink-blue: var(--ink-blue);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  background-color: var(--ink-bg);
+  color: var(--ink-fg);
+}
+
+body {
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 可复用工具类 ---------- */
+
+/* 黎明金橙渐变文字 */
+.text-dawn {
+  background-image: linear-gradient(
+    100deg,
+    var(--ink-dawn-from) 0%,
+    var(--ink-dawn-via) 50%,
+    var(--ink-dawn-to) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 黎明渐变背景 */
+.bg-dawn {
+  background-image: linear-gradient(
+    100deg,
+    var(--ink-dawn-from) 0%,
+    var(--ink-dawn-via) 50%,
+    var(--ink-dawn-to) 100%
+  );
+}
+
+/* 面板：深黑 + 细边框 + 柔和阴影（用于预览区等） */
+.panel-ink {
+  background-color: var(--ink-panel);
+  border: 1px solid var(--ink-line);
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.03) inset,
+    0 18px 40px -12px rgb(0 0 0 / 0.8);
+}
+
+/* 滚动条（黑色流式输出区） */
+.scroll-ink::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-ink::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-ink::-webkit-scrollbar-thumb {
+  background-color: var(--ink-line);
+  border-radius: 9999px;
+}
+.scroll-ink::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ink-fg-faint);
+}
+
+/* ---------- 流式代码区 ---------- */
+
+.codestream {
+  counter-reset: ln;
+  font-variant-ligatures: none;
+}
+
+/* 行：行号用 CSS counter，不占 DOM 文本节点 */
+.codestream .ln {
+  counter-increment: ln;
+  position: relative;
+  padding-left: 3.5rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-width: 0;
+}
+.codestream .ln::before {
+  content: counter(ln);
+  position: absolute;
+  left: 0;
+  width: 2.5rem;
+  text-align: right;
+  color: var(--ink-fg-faint);
+  opacity: 0.45;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+/* 空行保持高度 */
+.codestream .ln:empty::after {
+  content: " ";
+}
+
+/* 进行中行：微弱高亮底色 */
+.codestream .ln-active {
+  background-color: rgb(251 191 36 / 0.04);
+}
+
+/* 光标：接在进行中行末尾（CSS 伪元素，无 DOM 节点） */
+.codestream .ln-active::after {
+  content: "";
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background-color: var(--ink-amber);
+  animation: cursor-blink 1s step-start infinite;
+}
+
+@keyframes cursor-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}

@@ -1,0 +1,17 @@
+# 构建产物与依赖
+web/node_modules/
+web/.next/
+web/tsconfig.tsbuildinfo
+
+# 视频与压缩包：按比赛要求走邮件附件，不入仓库（GitHub 单文件限 100MB）
+*.mp4
+*.mov
+*.zip
+
+# 临时与产物
+artifacts/
+*.log
+.DS_Store
+
+# 操作系统
+Thumbs.db

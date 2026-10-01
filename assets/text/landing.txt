@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quill — Write with the light of dawn</title>
+<style>
+  :root {
+    --bg: #08080a; --bg-soft: #0e0e12; --card: #111116;
+    --line: rgba(255,255,255,.08); --line-strong: rgba(255,255,255,.14);
+    --text: #f4f4f5; --muted: #a1a1aa; --faint: #71717a;
+    --amber: #fbbf24; --orange: #f97316;
+    --grad: linear-gradient(120deg, #fbbf24 0%, #f97316 100%);
+    --radius: 18px;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+      "Helvetica Neue", "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+      "Microsoft YaHei", system-ui, sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text);
+    line-height: 1.6; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+
+
+  /* ---------- ambient dawn glow ---------- */
+  /* a soft amber sun sitting just above the fold */
+
+  .glow { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .glow::before, .glow::after { content: ""; position: absolute; border-radius: 50%; filter: blur(120px); }
+  .glow::before { width: 620px; height: 620px; top: -240px; left: 50%; transform: translateX(-50%);
+    background: radial-gradient(circle, #fbbf24 0%, transparent 70%); opacity: .22; }
+  .glow::after { width: 900px; height: 480px; top: 120px; left: 50%; transform: translateX(-50%);
+    background: radial-gradient(circle, #f97316 0%, transparent 70%); opacity: .12; }
+  main, header, footer { position: relative; z-index: 1; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 28px; }
+
+
+  /* ---------- navigation bar ---------- */
+  /* Transparent at rest, frosts into solid glass once you scroll */
+
+  .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+    border-bottom: 1px solid transparent;
+    transition: background .4s ease, border-color .4s ease, backdrop-filter .4s ease, box-shadow .4s ease; }
+  .nav .inner { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+  .nav.solid { background: rgba(8,8,10,.82); backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px); border-bottom-color: var(--line);
+    box-shadow: 0 10px 40px rgba(0,0,0,.45); }
+
+  .logo { display: flex; align-items: center; gap: 10px; font-size: 1.25rem;
+    font-weight: 700; letter-spacing: -.02em; color: var(--text); text-decoration: none; }
+  .logo svg { flex: none; }
+  .logo .mark { background: var(--grad); -webkit-background-clip: text;
+    background-clip: text; color: transparent; }
+
+  .menu { display: flex; align-items: center; gap: 34px; list-style: none; }
+  .menu a { color: var(--muted); text-decoration: none; font-size: .94rem;
+    font-weight: 500; position: relative; transition: color .25s ease; }
+  .menu a::after { content: ""; position: absolute; left: 0; bottom: -6px;
+    width: 0; height: 2px; border-radius: 2px; background: var(--grad); transition: width .3s ease; }
+  .menu a:hover { color: var(--text); }
+  .menu a:hover::after { width: 100%; }
+
+  /* ---------- buttons ---------- */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    border: none; cursor: pointer; font-family: inherit; font-weight: 600;
+    text-decoration: none; border-radius: 999px;
+    transition: transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease,
+      background .25s ease, color .25s ease, border-color .25s ease; }
+  .btn-primary { padding: 13px 30px; font-size: .98rem; color: #18120a;
+    background: var(--grad); background-size: 160% 160%;
+    box-shadow: 0 8px 30px rgba(249,115,22,.32); }
+  .btn-primary:hover { transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 14px 42px rgba(249,115,22,.5); background-position: 100% 50%; }
+  .btn-primary:active { transform: translateY(-1px) scale(.99); }
+  .btn-ghost { padding: 12px 26px; font-size: .94rem; color: var(--text);
+    background: rgba(255,255,255,.04); border: 1px solid var(--line-strong); }
+  .btn-ghost:hover { transform: translateY(-3px); background: rgba(255,255,255,.08);
+    border-color: rgba(251,191,36,.45); }
+  .btn-sm { padding: 9px 20px; font-size: .9rem; }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 190px 0 120px; text-align: center; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px;
+    border-radius: 999px; border: 1px solid rgba(251,191,36,.3);
+    background: rgba(251,191,36,.07); color: #fcd34d; font-size: .82rem;
+    font-weight: 600; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 30px; }
+  .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%;
+    background: var(--amber); box-shadow: 0 0 10px var(--amber); animation: pulse 2.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.75); } }
+
+  h1 { font-size: clamp(2.8rem, 6.4vw, 4.7rem); font-weight: 800;
+    letter-spacing: -.035em; line-height: 1.08; margin-bottom: 26px; }
+  .grad-text { background: var(--grad); -webkit-background-clip: text;
+    background-clip: text; color: transparent; }
+  .sub { max-width: 600px; margin: 0 auto 42px; color: var(--muted);
+    font-size: 1.14rem; line-height: 1.7; }
+  .hero-cta { display: flex; gap: 16px; justify-content: center;
+    flex-wrap: wrap; margin-bottom: 76px; }
+
+  /* ---------- typewriter stage ---------- */
+  .stage { max-width: 720px; margin: 0 auto; text-align: left; border-radius: 20px;
+    background: linear-gradient(180deg, #121218 0%, #0c0c10 100%);
+    border: 1px solid var(--line);
+    box-shadow: 0 40px 90px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05); overflow: hidden; }
+  .stage-bar { display: flex; align-items: center; gap: 14px; padding: 14px 18px;
+    border-bottom: 1px solid var(--line); background: rgba(255,255,255,.02); }
+  .lights { display: flex; gap: 7px; }
+  .lights i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+  .lights i:nth-child(1) { background: #f87171; }
+  .lights i:nth-child(2) { background: #fbbf24; }
+  .lights i:nth-child(3) { background: #34d399; }
+  .stage-title { font-family: var(--mono); font-size: .76rem; color: var(--faint); letter-spacing: .04em; }
+  .stage-body { padding: 26px 30px 30px; min-height: 168px; }
+  .stage-prompt { font-family: var(--mono); font-size: .78rem; color: var(--faint); margin-bottom: 14px; }
+  .stage-text { font-size: 1.06rem; line-height: 1.75; color: #d4d4d8;
+    font-weight: 450; white-space: pre-wrap; word-break: break-word; }
+  .caret { display: inline-block; width: 3px; height: 1.05em; vertical-align: text-bottom;
+    margin-left: 3px; border-radius: 2px; background: var(--amber);
+    animation: blink .85s step-end infinite; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+  .stage-cursor-row { display: flex; align-items: center; gap: 10px; margin-top: 18px;
+    font-family: var(--mono); font-size: .74rem; color: var(--faint); }
+  .ai-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px;
+    border-radius: 999px; background: rgba(249,115,22,.12);
+    border: 1px solid rgba(249,115,22,.3); color: #fdba74; font-weight: 600; }
+  .ai-badge svg { animation: spin 3.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- section frame ---------- */
+  .section { padding: 110px 0; }
+  .sec-head { text-align: center; margin-bottom: 64px; }
+  .sec-head h2 { font-size: clamp(1.9rem, 4vw, 2.7rem); font-weight: 780;
+    letter-spacing: -.03em; line-height: 1.2; margin-bottom: 16px; }
+  .sec-head p { color: var(--muted); max-width: 520px; margin: 0 auto; font-size: 1.02rem; }
+
+  /* ---------- features ---------- */
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .card { position: relative; padding: 38px 32px 34px; border-radius: var(--radius);
+    background: var(--card); border: 1px solid var(--line); overflow: hidden;
+    transition: transform .38s cubic-bezier(.34,1.4,.64,1), border-color .3s ease,
+      box-shadow .3s ease, background .3s ease; }
+  .card::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+    background: linear-gradient(140deg, rgba(251,191,36,.55), transparent 45%, transparent 60%, rgba(249,115,22,.4));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0; transition: opacity .35s ease; }
+  .card:hover { transform: translateY(-10px); border-color: var(--line-strong);
+    box-shadow: 0 26px 60px rgba(0,0,0,.5); background: #131319; }
+  .card:hover::before { opacity: 1; }
+  .icon { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 14px;
+    margin-bottom: 24px; background: linear-gradient(140deg, rgba(251,191,36,.16), rgba(249,115,22,.1));
+    border: 1px solid rgba(251,191,36,.22);
+    transition: transform .38s cubic-bezier(.34,1.4,.64,1); }
+  .card:hover .icon { transform: scale(1.1) rotate(-6deg); }
+  .icon svg { width: 24px; height: 24px; stroke: #fbbf24; }
+  .card h3 { font-size: 1.18rem; font-weight: 680; letter-spacing: -.015em; margin-bottom: 10px; }
+  .card p { color: var(--muted); font-size: .96rem; line-height: 1.68; }
+
+  /* ---------- pricing ---------- */
+  .pricing { background: var(--bg-soft); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: stretch; }
+  .price { position: relative; padding: 42px 34px; border-radius: 20px; background: var(--card);
+    border: 1px solid var(--line); display: flex; flex-direction: column;
+    transition: transform .35s cubic-bezier(.34,1.4,.64,1), box-shadow .3s ease; }
+  .price:hover { transform: translateY(-6px); box-shadow: 0 22px 54px rgba(0,0,0,.45); }
+  .price.popular { background: linear-gradient(180deg, #17130d 0%, #111116 62%);
+    border-color: rgba(251,191,36,.42); box-shadow: 0 30px 80px rgba(249,115,22,.18);
+    transform: scale(1.045); }
+  .price.popular:hover { transform: scale(1.045) translateY(-6px); }
+  .ribbon { position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+    padding: 6px 18px; border-radius: 999px; background: var(--grad); color: #18120a;
+    font-size: .76rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+    white-space: nowrap; box-shadow: 0 8px 24px rgba(249,115,22,.45); }
+  .price .name { font-size: .92rem; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--faint); margin-bottom: 18px; }
+  .price .amount { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
+  .price .amount .n { font-size: 2.9rem; font-weight: 800; letter-spacing: -.04em; }
+  .price .amount .p { color: var(--faint); font-size: .95rem; }
+  .price .desc { color: var(--muted); font-size: .92rem; margin-bottom: 26px; }
+  .feats { list-style: none; display: flex; flex-direction: column; gap: 13px; margin-bottom: 32px; }
+  .feats li { display: flex; align-items: flex-start; gap: 11px; color: #d4d4d8; font-size: .94rem; }
+  .feats .tick { flex: none; margin-top: 4px; width: 16px; height: 16px; stroke: #fbbf24; }
+  .price .btn { margin-top: auto; width: 100%; }
+  .price .btn-ghost { color: var(--text); }
+
+  /* ---------- footer ---------- */
+  footer { padding: 70px 0 46px; }
+  .foot-top { display: flex; justify-content: space-between; gap: 40px; flex-wrap: wrap;
+    padding-bottom: 40px; border-bottom: 1px solid var(--line); }
+  .foot-about { max-width: 300px; }
+  .foot-about p { color: var(--faint); font-size: .92rem; margin-top: 14px; line-height: 1.65; }
+  .foot-cols { display: flex; gap: 76px; flex-wrap: wrap; }
+  .foot-col h4 { font-size: .8rem; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--faint); margin-bottom: 16px; }
+  .foot-col ul { list-style: none; display: flex; flex-direction: column; gap: 11px; }
+  .foot-col a { color: var(--muted); text-decoration: none; font-size: .93rem; transition: color .2s ease; }
+  .foot-col a:hover { color: var(--amber); }
+  .foot-bot { display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    flex-wrap: wrap; padding-top: 28px; color: var(--faint); font-size: .84rem; }
+
+  /* ---------- scroll reveal ---------- */
+  .reveal { opacity: 0; transform: translateY(34px);
+    transition: opacity .75s cubic-bezier(.22,1,.36,1), transform .75s cubic-bezier(.22,1,.36,1); }
+  .reveal.in { opacity: 1; transform: none; }
+  .d1 { transition-delay: .09s; } .d2 { transition-delay: .18s; } .d3 { transition-delay: .27s; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px) {
+    .grid-3, .price-grid { grid-template-columns: 1fr; max-width: 460px; margin: 0 auto; }
+    .price.popular { transform: none; }
+    .price.popular:hover { transform: translateY(-6px); }
+    .menu { display: none; }
+    .hero { padding: 150px 0 90px; }
+    .section { padding: 80px 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="glow" aria-hidden="true"></div>
+
+<!-- ===================== NAV ===================== -->
+<header class="nav" id="nav">
+  <div class="wrap inner">
+    <a class="logo" href="#" aria-label="Quill home">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="url(#lg)"
+        stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <defs>
+          <linearGradient id="lg" x1="0" y1="0" x2="24" y2="24">
+            <stop offset="0" stop-color="#fbbf24" />
+            <stop offset="1" stop-color="#f97316" />
+          </linearGradient>
+        </defs>
+        <path d="M20.5 3.5C15 4 9.5 8 12.5 13c-3 1.5-5 4.5-6 7.5" />
+        <path d="M3.5 20.5c3-1 6-3 7.5-6" />
+        <path d="M15 8.5c1.8-1.4 3.6-2.2 5.5-2.5" />
+      </svg>
+      <span><span class="mark">Quill</span></span>
+    </a>
+    <nav>
+      <ul class="menu">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#">Blog</a></li>
+        <li><a href="#">Docs</a></li>
+      </ul>
+    </nav>
+    <a class="btn btn-primary btn-sm" href="#pricing">Get started</a>
+  </div>
+</header>
+
+<main>
+  <!-- ===================== HERO ===================== -->
+  <section class="hero wrap">
+    <span class="eyebrow reveal"><span class="dot"></span>Now in public beta</span>
+    <h1 class="reveal d1">Write with the<br /><span class="grad-text">light of dawn</span></h1>
+    <p class="sub reveal d2">
+      Quill is the AI writing companion that turns a half-formed thought into
+      prose that sounds like you — only clearer. Command the page, not the cursor.
+    </p>
+    <div class="hero-cta reveal d3">
+      <a class="btn btn-primary" href="#pricing">
+        Start writing free
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h13M12 5l7 7-7 7" />
+        </svg>
+      </a>
+      <a class="btn btn-ghost" href="#features">See how it works</a>
+    </div>
+    <!-- typewriter stage -->
+    <div class="stage reveal d2" id="stage" aria-live="polite">
+      <div class="stage-bar">
+        <span class="lights"><i></i><i></i><i></i></span>
+        <span class="stage-title">quill — draft.md</span>
+      </div>
+      <div class="stage-body">
+        <div class="stage-prompt">&gt; Prompt: "a calm morning, in the voice of a travel journal"</div>
+        <div class="stage-text"><span id="type"></span><span class="caret" id="caret"></span></div>
+        <div class="stage-cursor-row">
+          <span class="ai-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-6.2-8.6" />
+            </svg>
+            Quill is writing…
+          </span>
+          <span id="counter">0 words</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ===================== FEATURES ===================== -->
+<section class="section wrap" id="features">
+  <div class="sec-head reveal">
+    <h2>Crafted for <span class="grad-text">the flow</span></h2>
+    <p>Every detail is built to keep you in the sentence — never fighting the tool.</p>
+  </div>
+  <div class="grid-3">
+    <article class="card reveal d1">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3l2.4 5.3 5.6.7-4.1 3.9 1 5.6L12 15.8 7.1 18.5l1-5.6L4 9l5.6-.7z" />
+        </svg>
+      </div>
+      <h3>Voice Lock</h3>
+      <p>Train Quill on three paragraphs of your own writing. Every draft keeps your cadence, your syntax, your instincts.</p>
+    </article>
+    <article class="card reveal d2">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <path d="M14 2v6h6" />
+          <path d="M9 13l2 2 4-4" />
+        </svg>
+      </div>
+      <h3>Context Atlas</h3>
+      <p>Drop in notes, links, and PDFs. Quill grounds every sentence in your own sources, never invents a fact.</p>
+    </article>
+    <article class="card reveal d3">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z" />
+        </svg>
+      </div>
+      <h3>Velocity Mode</h3>
+      <p>One shortcut expands an outline into a full draft. Accept, refine, or rewind with a single keystroke.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===================== PRICING ===================== -->
+<section class="section pricing" id="pricing">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <h2>Pricing that <span class="grad-text">scales with you</span></h2>
+      <p>Start free. Upgrade when the words start paying for themselves.</p>
+    </div>
+    <div class="price-grid">
+      <article class="price reveal d1">
+        <div class="name">Dusk</div>
+        <div class="amount"><span class="n">$0</span><span class="p">/ forever</span></div>
+        <p class="desc">For first drafts and curious minds.</p>
+        <ul class="feats">
+          <li><svg class="tick" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>10,000 words of AI monthly</li>
+          <li><svg class="tick" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>Voice Lock trial</li>
+          <li><svg class="tick" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>Markdown export</li>
+        </ul>
+        <a class="btn btn-ghost" href="#">Begin writing</a>
+      </article>
+      <article class="price popular reveal d2">
+        <span class="ribbon">Most Popular</span>
+        <div class="name">Dawn</div>
+        <div class="amount"><span class="n">$18</span><span class="p">/ month</span></div>
+        <p class="desc">For writers who ship every week.</p>
+        <ul class="feats">
+          <li><svg class="tick" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>Unlimited words</li>
+          <li><svg class="tick" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>Full Voice Lock profile</li>
+          <li><svg class="tick" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>Context Atlas, 50 sources</li>
+          <li><svg class="tick" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>Velocity Mode shortcuts</li>
+        </ul>
+        <a class="btn btn-primary" href="#">Choose Dawn</a>
+      </article>
+      <article class="price reveal d3">
+        <div class="name">Solstice</div>
+        <div class="amount"><span class="n">$49</span><span class="p">/ month</span></div>
+        <p class="desc">For teams writing as one voice.</p>
+        <ul class="feats">
+          <li><svg class="tick" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>Everything in Dawn</li>
+          <li><svg class="tick" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>Shared style guides</li>
+          <li><svg class="tick" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>Unlimited sources</li>
+          <li><svg class="tick" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>SSO and audit logs</li>
+        </ul>
+        <a class="btn btn-ghost" href="#">Talk to us</a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FOOTER ===================== -->
+<footer>
+  <div class="wrap">
+    <div class="foot-top">
+      <div class="foot-about">
+        <a class="logo" href="#" aria-label="Quill home">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#lg)"
+            stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20.9 3.6C15.5 4.2 10.2 8 13.1 13c-2.9 1.5-4.9 4.4-5.9 7.4" />
+            <path d="M4.2 20.8c2.9-1 5.8-2.9 7.3-5.9" />
+            <path d="M15.4 8.9c1.7-1.3 3.5-2.1 5.4-2.4" />
+          </svg>
+          <span><span class="mark">Quill</span></span>
+        </a>
+        <p>The AI writing companion built at the edge of night, where your best ideas are already waiting.</p>
+      </div>
+      <div class="foot-cols">
+        <div class="foot-col">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#">Changelog</a></li>
+            <li><a href="#">Roadmap</a></li>
+          </ul>
+        </div>
+        <div class="foot-col">
+          <h4>Company</h4>
+          <ul>
+            <li><a href="#">About</a></li>
+            <li><a href="#">Careers</a></li>
+            <li><a href="#">Press kit</a></li>
+          </ul>
+        </div>
+        <div class="foot-col">
+          <h4>Legal</h4>
+          <ul>
+            <li><a href="#">Privacy</a></li>
+            <li><a href="#">Terms</a></li>
+            <li><a href="#">Security</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="foot-bot">
+      <span>© 2026 Quill Labs, Inc.</span>
+      <span>Made for writers, before the sun rises.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  /* 1. nav turns solid on scroll */
+  var nav = document.getElementById("nav");
+  var ticking = false;
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(function () {
+      nav.classList.toggle("solid", window.scrollY > 24);
+      ticking = false;
+    });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  /* 2. typewriter */
+  var TEXT = "The harbor was already awake at five. Fishing boats knocked against the quay like a city finding its rhythm, and the first light came in low and gold, painting the plaster walls of the old town the color of warm bread. I drank my coffee standing up, the way the locals do, and decided that a place this generous with its mornings deserved at least one more day of mine.";
+
+  var typeEl = document.getElementById("type");
+  var counterEl = document.getElementById("counter");
+  var caretEl = document.getElementById("caret");
+  var i = 0;
+
+  function countWords(s) {
+    var t = s.replace(/\s+/g, " ").trim();
+    return t.length ? t.split(" ").length : 0;
+  }
+
+  function typeStep() {
+    if (i >= TEXT.length) {
+      counterEl.textContent = countWords(TEXT) + " words, done";
+      caretEl.style.animationDuration = "0.5s";
+      return;
+    }
+    i++;
+    typeEl.textContent = TEXT.slice(0, i);
+    counterEl.textContent = countWords(TEXT.slice(0, i)) + " words";
+    var ch = TEXT.charAt(i - 1);
+    var delay = /[,.;:]/.test(ch) ? 240 : (ch === " " ? 14 : 26 + Math.random() * 46);
+    window.setTimeout(typeStep, delay);
+  }
+
+  window.setTimeout(typeStep, 1100);
+
+  /* 3. scroll reveal via IntersectionObserver */
+  var reveals = document.querySelectorAll(".reveal");
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("in");
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.14, rootMargin: "0px 0px -8% 0px" });
+    reveals.forEach(function (el) { io.observe(el); });
+  } else {
+    reveals.forEach(function (el) { el.classList.add("in"); });
+  }
+})();
+</script>
+
+</body>
+</html>

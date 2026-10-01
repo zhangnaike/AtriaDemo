@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumen Analytics · 实时运营看板</title>
+<style>
+  :root {
+    --bg: #0A0A0F;
+    --card: rgba(255, 255, 255, 0.022);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --text: #EDEDF2;
+    --muted: #8A8A96;
+    --amber: #FBBF24;
+    --orange: #F97316;
+    --cyan: #22D3EE;
+    --green: #34D399;
+    --red: #F87171;
+    --violet: #A78BFA;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+      "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 28px 32px 40px;
+    background:
+      radial-gradient(1100px 520px at 82% -12%, rgba(249, 115, 22, 0.10), transparent 62%),
+      radial-gradient(760px 420px at 6% 8%, rgba(34, 211, 238, 0.07), transparent 60%),
+      var(--bg);
+  }
+
+  /* ---------- 顶部标题栏 ---------- */
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 26px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+
+  .brand-logo {
+    width: 40px; height: 40px; border-radius: 12px; flex: none;
+    background: linear-gradient(135deg, var(--amber), var(--orange));
+    display: grid; place-items: center;
+    box-shadow: 0 8px 26px rgba(249, 115, 22, 0.32);
+  }
+  .brand-logo svg { width: 22px; height: 22px; }
+  .brand h1 { font-size: 19px; font-weight: 650; letter-spacing: 0.2px; line-height: 1.2; }
+  .brand p { font-size: 12px; color: var(--muted); margin-top: 2px; letter-spacing: 0.3px; }
+
+  .topbar-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+  .live-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 14px 7px 11px;
+    border: 1px solid rgba(52, 211, 153, 0.32);
+    background: rgba(52, 211, 153, 0.08);
+    border-radius: 999px;
+    font-size: 12px; font-weight: 600; color: var(--green); letter-spacing: 0.6px;
+  }
+
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); position: relative; flex: none; }
+  .live-dot::after {
+    content: ""; position: absolute; inset: -4px; border-radius: 50%;
+    border: 1.5px solid var(--green);
+    animation: breathe 2s ease-out infinite;
+  }
+
+  @keyframes breathe {
+    0%   { transform: scale(0.55); opacity: 0.9; }
+    70%  { transform: scale(1.6);  opacity: 0; }
+    100% { transform: scale(1.6);  opacity: 0; }
+  }
+
+  .range-switch { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255, 255, 255, 0.025); }
+  .range-switch button {
+    appearance: none; border: none; background: transparent; color: var(--muted);
+    font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: 9px;
+    cursor: pointer; font-family: inherit;
+    transition: color 0.18s, background 0.18s;
+  }
+  .range-switch button:hover { color: var(--text); }
+  .range-switch button.active {
+    color: #1A1206;
+    background: linear-gradient(135deg, var(--amber), var(--orange));
+    box-shadow: 0 4px 14px rgba(249, 115, 22, 0.3);
+  }
+
+  /* ---------- KPI 卡片 ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; backdrop-filter: blur(6px); }
+  .kpi { padding: 20px 22px 18px; position: relative; overflow: hidden; }
+  .kpi::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; opacity: 0.75;
+    background: linear-gradient(90deg, var(--amber), var(--orange), transparent);
+  }
+  .kpi.cyan::before { background: linear-gradient(90deg, var(--cyan), rgba(34, 211, 238, 0.06)); }
+  .kpi.violet::before { background: linear-gradient(90deg, var(--violet), rgba(167, 139, 250, 0.06)); }
+
+  .kpi-label { font-size: 12.5px; color: var(--muted); letter-spacing: 0.4px; }
+  .kpi-value { font-size: 32px; font-weight: 700; letter-spacing: -0.6px; margin: 8px 0 6px; font-variant-numeric: tabular-nums; }
+  .kpi-value .unit { font-size: 17px; font-weight: 600; color: var(--muted); margin-left: 2px; }
+
+  .kpi-delta { font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; }
+  .kpi-delta.up { color: var(--green); background: rgba(52, 211, 153, 0.1); }
+  .kpi-delta.down { color: var(--red); background: rgba(248, 113, 113, 0.1); }
+  .kpi-sub { font-size: 11.5px; color: var(--muted); margin-top: 10px; }
+
+  .flash { animation: flash 0.9s ease-out; }
+  @keyframes flash {
+    0%   { color: var(--cyan); text-shadow: 0 0 18px rgba(34, 211, 238, 0.75); }
+    100% { color: var(--text); text-shadow: none; }
+  }
+
+  /* ---------- 图表区 ---------- */
+  .charts { display: grid; grid-template-columns: 1.62fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .chart-card { padding: 20px 22px 14px; }
+  .chart-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+  .chart-head h2 { font-size: 14.5px; font-weight: 650; letter-spacing: 0.2px; }
+  .chart-head p { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+  .legend { display: flex; gap: 14px; font-size: 11.5px; color: var(--muted); align-items: center; flex: none; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+
+  .chart-wrap { position: relative; width: 100%; margin-top: 6px; }
+  #lineChart { width: 100%; height: auto; display: block; }
+
+  .tooltip {
+    position: absolute; pointer-events: none;
+    background: rgba(18, 18, 26, 0.96);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px; padding: 9px 12px;
+    font-size: 12px; line-height: 1.55; white-space: nowrap;
+    transform: translate(-50%, -120%);
+    opacity: 0; transition: opacity 0.12s; z-index: 5;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip b { font-size: 14px; font-weight: 700; }
+  .tooltip .t-label { color: var(--muted); font-size: 11px; }
+
+  /* ---------- 环形图 ---------- */
+  .donut-layout { display: flex; align-items: center; gap: 18px; margin-top: 4px; flex-wrap: wrap; }
+  .donut-wrap { position: relative; width: 168px; height: 168px; flex: none; }
+  .donut-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .donut-center { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; pointer-events: none; }
+  .donut-center .dc-value { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .donut-center .dc-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .donut-segment { cursor: pointer; transition: opacity 0.18s, stroke-width 0.18s; }
+
+  .donut-legend { flex: 1; min-width: 132px; display: flex; flex-direction: column; gap: 9px; }
+  .donut-legend .item { display: flex; align-items: center; gap: 9px; font-size: 12.5px; padding: 5px 8px; border-radius: 8px; cursor: pointer; transition: background 0.15s, opacity 0.15s; }
+  .donut-legend .item:hover { background: rgba(255, 255, 255, 0.04); }
+  .donut-legend .item.dim { opacity: 0.35; }
+  .donut-legend i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .donut-legend .name { color: var(--text); flex: 1; }
+  .donut-legend .pct { color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  /* ---------- 表格 ---------- */
+  .table-card { padding: 20px 22px 14px; }
+  .table-scroll { overflow-x: auto; margin: 12px -22px 0; padding: 0 22px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.7px; text-transform: uppercase; padding: 0 14px 10px; white-space: nowrap; }
+  tbody td { padding: 12px 14px; border-top: 1px solid rgba(255, 255, 255, 0.05); vertical-align: middle; }
+  tbody tr { transition: background 0.14s; }
+  tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+  .order-id { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+  .customer { display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; color: #1A1206; flex: none; }
+  .amount { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; padding: 4px 11px; border-radius: 999px; white-space: nowrap; }
+  .badge i { width: 6px; height: 6px; border-radius: 50%; }
+  .badge.completed { color: var(--green); background: rgba(52, 211, 153, 0.1); }
+  .badge.completed i { background: var(--green); }
+  .badge.active    { color: var(--cyan);  background: rgba(34, 211, 238, 0.1); }
+  .badge.active i  { background: var(--cyan); }
+  .badge.pending   { color: var(--amber); background: rgba(251, 191, 36, 0.1); }
+  .badge.pending i { background: var(--amber); }
+  .badge.refunded  { color: var(--red);   background: rgba(248, 113, 113, 0.1); }
+  .badge.refunded i { background: var(--red); }
+  .footer-note { font-size: 11px; color: var(--muted); margin-top: 14px; text-align: right; letter-spacing: 0.3px; }
+
+  @media (max-width: 980px) {
+    body { padding: 20px 16px 32px; }
+    .kpis, .charts { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- 顶部标题栏 -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 18 L9.5 11 L13.5 14.5 L20 6" stroke="#1A1206" stroke-width="2.4"
+                stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="20" cy="6" r="2.1" fill="#1A1206"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Lumen Analytics</h1>
+        <p>实时运营看板 · Real-time Operations</p>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+      <div class="range-switch" id="rangeSwitch" role="tablist" aria-label="时间范围">
+        <button data-range="24h">24 时</button>
+        <button data-range="7d">7 天</button>
+        <button data-range="14d" class="active">14 天</button>
+        <button data-range="30d">30 天</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- KPI 卡片 -->
+  <section class="kpis" aria-label="关键指标">
+    <div class="card kpi">
+      <div class="kpi-label">今日活跃用户</div>
+      <div class="kpi-value"><span id="kpiActive">0</span><span class="unit">人</span></div>
+      <span class="kpi-delta up" id="kpiActiveDelta">▲ 0%</span>
+      <div class="kpi-sub">较昨日同期 · 每 4 秒同步</div>
+    </div>
+    <div class="card kpi cyan">
+      <div class="kpi-label">今日收入</div>
+      <div class="kpi-value"><span class="unit" style="margin-right:2px">¥</span><span id="kpiRevenue">0</span></div>
+      <span class="kpi-delta up" id="kpiRevenueDelta">▲ 0%</span>
+      <div class="kpi-sub">含 Pro / Team / Enterprise 全部订阅</div>
+    </div>
+    <div class="card kpi violet">
+      <div class="kpi-label">转化率</div>
+      <div class="kpi-value"><span id="kpiConvert">0</span><span class="unit">%</span></div>
+      <span class="kpi-delta down" id="kpiConvertDelta">▼ 0%</span>
+      <div class="kpi-sub">访问 → 付费注册端到端转化</div>
+    </div>
+  </section>
+
+  <!-- 折线图 + 环形图 -->
+  <section class="charts">
+    <div class="card chart-card">
+      <div class="chart-head">
+        <div>
+          <h2>活跃趋势</h2>
+          <p>过去 <span id="rangeLabel">14 天</span> 的日活跃用户</p>
+        </div>
+        <div class="legend">
+          <span><i style="background:linear-gradient(135deg,#FBBF24,#F97316)"></i>活跃用户</span>
+          <span><i style="background:rgba(255,255,255,0.22)"></i>基准</span>
+        </div>
+      </div>
+      <div class="chart-wrap" id="lineWrap">
+        <svg id="lineChart" viewBox="0 0 700 300" role="img" aria-label="活跃趋势折线图"></svg>
+        <div class="tooltip" id="lineTooltip"></div>
+      </div>
+    </div>
+
+    <div class="card chart-card">
+      <div class="chart-head">
+        <div>
+          <h2>流量来源</h2>
+          <p>占比按访问量计算 · 悬停查看明细</p>
+        </div>
+      </div>
+      <div class="donut-layout">
+        <div class="donut-wrap" id="donutWrap">
+          <svg id="donutChart" viewBox="0 0 120 120"></svg>
+          <div class="donut-center">
+            <div>
+              <div class="dc-value" id="donutValue">0%</div>
+              <div class="dc-label" id="donutLabel">自然搜索</div>
+            </div>
+          </div>
+        </div>
+        <div class="donut-legend" id="donutLegend"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 订单表格 -->
+  <section class="card table-card">
+    <div class="chart-head">
+      <div>
+        <h2>最近订单</h2>
+        <p>实时滚动更新 · 最新 8 笔</p>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>订单号</th><th>客户</th><th>方案</th><th style="text-align:right">金额</th><th>状态</th>
+          </tr>
+        </thead>
+        <tbody id="orderBody"></tbody>
+      </table>
+    </div>
+    <div class="footer-note">数据每 4 秒自动刷新 · Lumen Analytics Demo</div>
+  </section>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ================= 数据（写死，供 demo 回放） ================= */
+  var RANGES = {
+    "24h": {
+      label: "24 小时",
+      kpis: { active: [0, 12840, 8.4], revenue: [0, 96420, 12.1], convert: [0, 4.86, -0.6] },
+      series: [
+        { label: "0:00", active: 420 },  { label: "01:00", active: 318 },  { label: "02:00", active: 264 },
+        { label: "03:00", active: 241 }, { label: "04:00", active: 286 }, { label: "05:00", active: 392 },
+        { label: "06:00", active: 610 }, { label: "07:00", active: 948 }, { label: "08:00", active: 1320 },
+        { label: "09:00", active: 1688 }, { label: "10:00", active: 2010 }, { label: "11:00", active: 2238 },
+        { label: "12:00", active: 2146 }, { label: "13:00", active: 2292 }, { label: "14:00", active: 2418 },
+        { label: "15:00", active: 2300 }, { label: "16:00", active: 2184 }, { label: "17:00", active: 2306 },
+        { label: "18:00", active: 2472 }, { label: "19:00", active: 2604 }, { label: "20:00", active: 2688 },
+        { label: "21:00", active: 2512 }, { label: "22:00", active: 1930 }, { label: "23:00", active: 1180 }
+      ],
+      sources: [
+        { name: "自然搜索", value: 34, color: "#FBBF24" }, { name: "直接访问", value: 26, color: "#F97316" },
+        { name: "社交媒体", value: 22, color: "#22D3EE" }, { name: "付费广告", value: 12, color: "#A78BFA" },
+        { name: "邮件推荐", value: 6, color: "#34D399" }
+      ]
+    },
+    "7d": {
+      label: "7 天",
+      kpis: { active: [0, 48210, 5.2], revenue: [0, 412800, 9.7], convert: [0, 5.12, 0.9] },
+      series: [
+        { label: "周一", active: 6420 }, { label: "周二", active: 7180 }, { label: "周三", active: 6890 },
+        { label: "周四", active: 8240 }, { label: "周五", active: 9460 }, { label: "周六", active: 8120 },
+        { label: "周日", active: 7980 }
+      ],
+      sources: [
+        { name: "自然搜索", value: 31, color: "#FBBF24" }, { name: "直接访问", value: 24, color: "#F97316" },
+        { name: "社交媒体", value: 27, color: "#22D3EE" }, { name: "付费广告", value: 11, color: "#A78BFA" },
+        { name: "邮件推荐", value: 7, color: "#34D399" }
+      ]
+    },
+    "14d": {
+      label: "14 天",
+      kpis: { active: [0, 96340, 12.6], revenue: [0, 827450, 15.3], convert: [0, 5.38, 1.8] },
+      series: [
+        { label: "9/18", active: 5840 },  { label: "9/19", active: 6320 },  { label: "9/20", active: 6110 },
+        { label: "9/21", active: 7040 },  { label: "9/22", active: 7620 },  { label: "9/23", active: 7180 },
+        { label: "9/24", active: 7460 },  { label: "9/25", active: 8230 },  { label: "9/26", active: 8680 },
+        { label: "9/27", active: 8410 },  { label: "9/28", active: 9020 },  { label: "9/29", active: 9640 },
+        { label: "9/30", active: 10240 }, { label: "10/01", active: 10880 }
+      ],
+      sources: [
+        { name: "自然搜索", value: 38, color: "#FBBF24" }, { name: "直接访问", value: 23, color: "#F97316" },
+        { name: "社交媒体", value: 19, color: "#22D3EE" }, { name: "付费广告", value: 14, color: "#A78BFA" },
+        { name: "邮件推荐", value: 6, color: "#34D399" }
+      ]
+    },
+    "30d": {
+      label: "30 天",
+      kpis: { active: [0, 214600, 18.9], revenue: [0, 1864200, 21.4], convert: [0, 5.61, 2.7] },
+      series: [
+        { label: "9/02", active: 5120 }, { label: "9/04", active: 5480 }, { label: "9/06", active: 5310 },
+        { label: "9/08", active: 5940 }, { label: "9/10", active: 6260 }, { label: "9/12", active: 6100 },
+        { label: "9/14", active: 6680 }, { label: "9/16", active: 7120 }, { label: "9/18", active: 5840 },
+        { label: "9/20", active: 6110 }, { label: "9/22", active: 7620 }, { label: "9/24", active: 7460 },
+        { label: "9/26", active: 8680 }, { label: "9/28", active: 9020 }, { label: "9/30", active: 10240 },
+        { label: "10/01", active: 10880 }
+      ],
+      sources: [
+        { name: "自然搜索", value: 36, color: "#FBBF24" }, { name: "直接访问", value: 25, color: "#F97316" },
+        { name: "社交媒体", value: 18, color: "#22D3EE" }, { name: "付费广告", value: 15, color: "#A78BFA" },
+        { name: "邮件推荐", value: 6, color: "#34D399" }
+      ]
+    }
+  };
+
+  var CUSTOMERS = [
+    ["陈晓桐", "Pro"], ["Marcus Lee", "Team"], ["王梓涵", "Pro"], ["Sofia Garcia", "Enterprise"],
+    ["刘子昂", "Team"], ["Ken Tanaka", "Pro"], ["李雨桐", "Enterprise"], ["Dmitri Volkov", "Team"],
+    ["赵启铭", "Pro"], ["Emma Wilson", "Pro"], ["孙梦琪", "Team"], ["Raj Patel", "Enterprise"]
+  ];
+  var STATUS = [["completed", "已完成"], ["active", "进行中"], ["pending", "待支付"], ["refunded", "已退款"]];
+  var PLAN_PRICE = { Pro: 299, Team: 899, Enterprise: 2999 };
+  var AVATAR_G = ["#FBBF24,#F97316", "#22D3EE,#0EA5E9", "#A78BFA,#8B5CF6", "#34D399,#10B981"];
+  var SVGNS = "http://www.w3.org/2000/svg";
+  var currentRange = "14d";
+
+  /* ================= 工具函数 ================= */
+  function $(id) { return document.getElementById(id); }
+  function fmt(n) { return Math.round(n).toLocaleString("en-US"); }
+  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+  /* 数字从 0 滚动到目标值 */
+  function animateValue(el, target, duration, format) {
+    var start = performance.now();
+    function step(now) {
+      var t = Math.min((now - start) / duration, 1);
+      el.textContent = format(target * easeOutCubic(t));
+      if (t < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function renderDelta(el, pct) {
+    var up = pct >= 0;
+    el.className = "kpi-delta " + (up ? "up" : "down");
+    el.textContent = (up ? "▲ " : "▼ ") + Math.abs(pct).toFixed(1) + "%";
+  }
+
+  function svgEl(tag, attrs) {
+    var el = document.createElementNS(SVGNS, tag);
+    for (var k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+
+  /* ================= 折线图（纯 SVG 手绘） ================= */
+  var C = { W: 700, H: 300, padT: 22, padR: 22, padB: 36, padL: 52 };
+
+  function renderLineChart(series) {
+    var svg = $("lineChart");
+    svg.innerHTML = "";
+    var n = series.length;
+    var plotW = C.W - C.padL - C.padR, plotH = C.H - C.padT - C.padB;
+
+    var values = [], i;
+    for (i = 0; i < n; i++) values.push(series[i].active);
+    var max = Math.max.apply(null, values), min = Math.min.apply(null, values);
+    var span = (max - min) || 1;
+    var yMax = max + span * 0.18, yMin = Math.max(0, min - span * 0.12);
+    var yRange = yMax - yMin;
+
+    function X(idx) { return C.padL + (plotW * idx) / (n - 1); }
+    function Y(v)   { return C.padT + plotH * (1 - (v - yMin) / yRange); }
+
+    /* defs：面积 + 折线渐变 */
+    var defs = svgEl("defs", {});
+    var gArea = svgEl("linearGradient", { id: "gArea", x1: "0", y1: "0", x2: "0", y2: "1" });
+    gArea.appendChild(svgEl("stop", { offset: "0%", "stop-color": "#F97316", "stop-opacity": 0.38 }));
+    gArea.appendChild(svgEl("stop", { offset: "55%", "stop-color": "#FBBF24", "stop-opacity": 0.14 }));
+    gArea.appendChild(svgEl("stop", { offset: "100%", "stop-color": "#FBBF24", "stop-opacity": 0 }));
+    defs.appendChild(gArea);
+    var gLine = svgEl("linearGradient", { id: "gLine", x1: "0", y1: "0", x2: "1", y2: "0" });
+    gLine.appendChild(svgEl("stop", { offset: "0%", "stop-color": "#FBBF24" }));
+    gLine.appendChild(svgEl("stop", { offset: "100%", "stop-color": "#F97316" }));
+    defs.appendChild(gLine);
+    svg.appendChild(defs);
+
+    /* 水平网格 + Y 轴刻度 */
+    var ticks = 4;
+    for (i = 0; i <= ticks; i++) {
+      var yv = C.padT + (plotH * i) / ticks;
+      var v = yMax - (yRange * i) / ticks;
+      svg.appendChild(svgEl("line", {
+        x1: C.padL, x2: C.W - C.padR, y1: yv, y2: yv,
+        stroke: "rgba(255,255,255,0.06)", "stroke-width": 1
+      }));
+      var yt = svgEl("text", {
+        x: C.padL - 10, y: yv + 4, "text-anchor": "end",
+        fill: "#8A8A96", "font-size": 10.5
+      });
+      yt.textContent = v >= 1000 ? (v / 1000).toFixed(1) + "k" : Math.round(v);
+      svg.appendChild(yt);
+    }
+
+    /* X 轴刻度（按密度抽稀，最多 8 个） */
+    var step = Math.ceil(n / 8);
+    for (i = 0; i < n; i += step) {
+      var xt = svgEl("text", {
+        x: X(i), y: C.H - C.padB + 20, "text-anchor": "middle",
+        fill: "#8A8A96", "font-size": 10.5
+      });
+      xt.textContent = series[i].label;
+      svg.appendChild(xt);
+    }
+
+    /* 折线 / 面积路径 */
+    var linePath = "", i2, x, y;
+    for (i2 = 0; i2 < n; i2++) {
+      x = X(i2); y = Y(series[i2].active);
+      linePath += (i2 === 0 ? "M" : "L") + x.toFixed(1) + " " + y.toFixed(1);
+    }
+    var areaPath = linePath +
+      "L" + X(n - 1).toFixed(1) + " " + (C.padT + plotH) +
+      "L" + X(0).toFixed(1) + " " + (C.padT + plotH) + "Z";
+
+    svg.appendChild(svgEl("path", { d: areaPath, fill: "url(#gArea)" }));
+
+    /* 基准虚线：期间均值 */
+    var avg = values.reduce(function (a, b) { return a + b; }, 0) / n;
+    svg.appendChild(svgEl("line", {
+      x1: C.padL, x2: C.W - C.padR, y1: Y(avg), y2: Y(avg),
+      stroke: "rgba(255,255,255,0.22)", "stroke-width": 1, "stroke-dasharray": "5 5"
+    }));
+
+    /* 主折线：底层光晕 + 主线 */
+    svg.appendChild(svgEl("path", {
+      d: linePath, fill: "none", stroke: "url(#gLine)",
+      "stroke-width": 6, "stroke-linecap": "round", "stroke-linejoin": "round", opacity: 0.18
+    }));
+    svg.appendChild(svgEl("path", {
+      d: linePath, fill: "none", stroke: "url(#gLine)",
+      "stroke-width": 2.6, "stroke-linecap": "round", "stroke-linejoin": "round"
+    }));
+
+    /* hover 交互层：竖线 + 光晕 + 锚点 */
+    var hover = svgEl("g", { opacity: 0 });
+    var hLine = svgEl("line", {
+      y1: C.padT, y2: C.padT + plotH,
+      stroke: "rgba(255,255,255,0.28)", "stroke-width": 1, "stroke-dasharray": "3 3"
+    });
+    var halo = svgEl("circle", { r: 9, fill: "#F97316", opacity: 0.22 });
+    var dot = svgEl("circle", { r: 4.6, fill: "#0A0A0F", stroke: "#FBBF24", "stroke-width": 2.4 });
+    hover.appendChild(hLine);
+    hover.appendChild(halo);
+    hover.appendChild(dot);
+    svg.appendChild(hover);
+
+    var overlay = svgEl("rect", {
+      x: C.padL, y: C.padT, width: plotW, height: plotH, fill: "transparent"
+    });
+    svg.appendChild(overlay);
+
+    var tip = $("lineTooltip");
+
+    function showAt(idx) {
+      var px = X(idx), py = Y(series[idx].active);
+      hover.setAttribute("opacity", 1);
+      hLine.setAttribute("x1", px);
+      hLine.setAttribute("x2", px);
+      halo.setAttribute("cx", px); halo.setAttribute("cy", py);
+      dot.setAttribute("cx", px);  dot.setAttribute("cy", py);
+
+      var wrap = $("lineWrap").getBoundingClientRect();
+      var sx = wrap.width / C.W, sy = wrap.height / C.H;
+      tip.innerHTML = '<span class="t-label">' + series[idx].label +
+        " · 活跃用户</span><br><b>" + fmt(series[idx].active) + "</b> 人";
+      tip.style.left = (px * sx) + "px";
+      tip.style.top = (py * sy) + "px";
+      tip.classList.add("show");
+    }
+
+    function hide() {
+      hover.setAttribute("opacity", 0);
+      tip.classList.remove("show");
+    }
+
+    function nearestIndex(clientX) {
+      var rect = svg.getBoundingClientRect();
+      var svgX = (clientX - rect.left) * (C.W / rect.width);
+      var idx = Math.round(((svgX - C.padL) / plotW) * (n - 1));
+      return Math.max(0, Math.min(n - 1, idx));
+    }
+
+    overlay.addEventListener("mousemove", function (ev) { showAt(nearestIndex(ev.clientX)); });
+    overlay.addEventListener("mouseleave", hide);
+    overlay.addEventListener("touchmove", function (ev) {
+      ev.preventDefault();
+      showAt(nearestIndex(ev.touches[0].clientX));
+    }, { passive: false });
+    overlay.addEventListener("touchend", hide);
+  }
+
+  /* ================= 环形图 ================= */
+  function renderDonut(sources) {
+    var svg = $("donutChart");
+    svg.innerHTML = "";
+    var total = 0, i;
+    for (i = 0; i < sources.length; i++) total += sources[i].value;
+
+    var R = 44, CENTER = 60, circ = 2 * Math.PI * R, offset = 0;
+
+    svg.appendChild(svgEl("circle", {
+      cx: CENTER, cy: CENTER, r: R, fill: "none",
+      stroke: "rgba(255,255,255,0.06)", "stroke-width": 13
+    }));
+
+    var segs = [];
+    for (i = 0; i < sources.length; i++) {
+      var s = sources[i];
+      var len = (s.value / total) * circ;
+      var arc = svgEl("circle", {
+        cx: CENTER, cy: CENTER, r: R, fill: "none",
+        stroke: s.color, "stroke-width": 13, "stroke-linecap": "round",
+        "stroke-dasharray": (len - 2.5) + " " + (circ - len + 2.5),
+        "stroke-dashoffset": -offset,
+        opacity: 0.92
+      });
+      arc.setAttribute("class", "donut-segment");
+      svg.appendChild(arc);
+      segs.push(arc);
+      offset += len;
+    }
+
+    function setCenter(idx) {
+      $("donutValue").textContent = Math.round(sources[idx].value / total * 100) + "%";
+      $("donutLabel").textContent = sources[idx].name;
+      $("donutValue").style.color = sources[idx].color;
+      for (var k = 0; k < segs.length; k++) {
+        segs[k].style.opacity = (k === idx ? 1 : 0.3);
+        segs[k].style.strokeWidth = (k === idx ? 16 : 13);
+      }
+      var items = $("donutLegend").children;
+      for (var m = 0; m < items.length; m++) items[m].classList.toggle("dim", m !== idx);
+    }
+
+    /* 图例 */
+    var legend = $("donutLegend");
+    legend.innerHTML = "";
+    var frag = document.createDocumentFragment();
+    for (i = 0; i < sources.length; i++) {
+      (function (idx) {
+        var s = sources[idx];
+        var row = document.createElement("div");
+        row.className = "item";
+        row.innerHTML =
+          '<i style="background:' + s.color + '"></i>' +
+          '<span class="name">' + s.name + "</span>" +
+          '<span class="pct">' + Math.round(s.value / total * 100) + "%</span>";
+
+        function on()  { setCenter(idx); }
+        function off() { setCenter(0); }
+        row.addEventListener("mouseenter", on);
+        row.addEventListener("mouseleave", off);
+        segs[idx].addEventListener("mouseenter", on);
+        segs[idx].addEventListener("mouseleave", off);
+        frag.appendChild(row);
+      })(i);
+    }
+    legend.appendChild(frag);
+    setCenter(0);
+  }
+
+  /* ================= 订单表格 ================= */
+  function renderOrders(seed) {
+    var tbody = $("orderBody");
+    tbody.innerHTML = "";
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < 8; i++) {
+      var cu = CUSTOMERS[(seed + i * 3) % CUSTOMERS.length];
+      var st = STATUS[(seed + i) % STATUS.length];
+      var price = PLAN_PRICE[cu[1]];
+      var qty = 1 + ((seed + i) % 3);
+
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td class="order-id">#LM-' + (20251000 + (seed + i) * 137) + "</td>" +
+        '<td><div class="customer">' +
+          '<span class="avatar" style="background:linear-gradient(135deg,' +
+          AVATAR_G[(seed + i) % 4] + ')">' + cu[0].slice(0, 1) + "</span>" +
+          cu[0] +
+        "</div></td>" +
+        "<td>" + cu[1] + "</td>" +
+        '<td style="text-align:right" class="amount">¥' + fmt(price * qty) + "</td>" +
+        '<td><span class="badge ' + st[0] + '"><i></i>' + st[1] + "</span></td>";
+      frag.appendChild(tr);
+    }
+    tbody.appendChild(frag);
+  }
+
+  /* ================= 渲染当前时间范围 ================= */
+  function renderRange(key, animate) {
+    currentRange = key;
+    var data = RANGES[key];
+    var k = data.kpis;
+
+    $("rangeLabel").textContent = data.label;
+
+    if (animate) {
+      animateValue($("kpiActive"),  k.active[1], 1400, fmt);
+      animateValue($("kpiRevenue"), k.revenue[1], 1400, fmt);
+      animateValue($("kpiConvert"), k.convert[1], 1200, function (v) { return v.toFixed(2); });
+    } else {
+      $("kpiActive").textContent = fmt(k.active[1]);
+      $("kpiRevenue").textContent = fmt(k.revenue[1]);
+      $("kpiConvert").textContent = k.convert[1].toFixed(2);
+    }
+    renderDelta($("kpiActiveDelta"), k.active[2]);
+    renderDelta($("kpiRevenueDelta"), k.revenue[2]);
+    renderDelta($("kpiConvertDelta"), k.convert[2]);
+
+    renderLineChart(data.series);
+    renderDonut(data.sources);
+
+    var buttons = $("rangeSwitch").querySelectorAll("button");
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].classList.toggle("active", buttons[i].getAttribute("data-range") === key);
+    }
+  }
+
+  /* ================= 事件绑定 ================= */
+  $("rangeSwitch").addEventListener("click", function (ev) {
+    var btn = ev.target.closest("button");
+    if (!btn) return;
+    var key = btn.getAttribute("data-range");
+    if (key !== currentRange) renderRange(key, true);
+  });
+
+  /* ================= 伪实时推送（demo 效果） ================= */
+  var tick = 0;
+  setInterval(function () {
+    tick++;
+    /* 今日活跃小幅抖动 + 青色闪烁高亮 */
+    var base = RANGES[currentRange].kpis.active[1];
+    var jitter = ((tick % 3) * 2 + 1) * 37;
+    var el = $("kpiActive");
+    el.textContent = fmt(base + jitter);
+    el.classList.remove("flash");
+    void el.offsetWidth; /* 重置动画，使每轮都能触发 */
+    el.classList.add("flash");
+
+    /* 订单表每两轮刷新一次 */
+    if (tick % 2 === 0) renderOrders(tick * 5);
+  }, 4000);
+
+  /* ================= 初始化 ================= */
+  renderOrders(0);
+  renderRange("14d", true);
+})();
+</script>
+</body>
+</html>
