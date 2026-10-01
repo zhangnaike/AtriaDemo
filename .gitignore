@@ -3,10 +3,11 @@ web/node_modules/
 web/.next/
 web/tsconfig.tsbuildinfo
 
-# 视频与压缩包：按比赛要求走邮件附件，不入仓库（GitHub 单文件限 100MB）
-*.mp4
+# 大视频原文件不入库（超过 GitHub 单文件 100MB 限制）
+# demo.mp4 为最终交付的演示视频（压缩后 < 100MB），需要入库
 *.mov
 *.zip
+demo-original-*.mp4
 
 # 临时与产物
 artifacts/
